@@ -10,6 +10,9 @@ import UIKit
 import MediaPlayer
 
 class SearchViewController: UIViewController {
+    
+    let defaultSession = URLSession(configuration: .default)
+    var dataTask: URLSessionDataTask?
 
   @IBOutlet weak var tableView: UITableView!
   @IBOutlet weak var searchBar: UISearchBar!
