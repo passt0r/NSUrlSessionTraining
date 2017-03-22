@@ -107,16 +107,44 @@ class SearchViewController: UIViewController {
   // Called when the Pause button for a track is tapped
   func pauseDownload(_ track: Track) {
     // TODO
+    if let urlString = track.previewUrl, let download = activeDownloads[urlString]{
+        if (download.isDownloading) {
+            download.downloadTask?.cancel{data in
+                if data != nil {
+                    download.resumeData = data
+                }
+            }
+            download.isDownloading = false
+        }
+    }
   }
   
   // Called when the Cancel button for a track is tapped
   func cancelDownload(_ track: Track) {
     // TODO
+    
+    if let urlString = track.previewUrl, let download = activeDownloads[urlString] {
+        download.downloadTask?.cancel()
+        activeDownloads[urlString] = nil
+    }
   }
   
   // Called when the Resume button for a track is tapped
   func resumeDownload(_ track: Track) {
     // TODO
+    
+    if let urlString = track.previewUrl, let download = activeDownloads[urlString] {
+        if let resumeData = download.resumeData {
+            download.downloadTask = downloadSession.downloadTask(withResumeData: resumeData)
+            download.downloadTask!.resume()
+            download.isDownloading = true
+        } else if let url = URL(string:download.url){
+            download.downloadTask = downloadSession.downloadTask(with: url)
+            download.downloadTask!.resume()
+            download.isDownloading = true
+            
+        }
+    }
   }
   
    // This method attempts to play the local file (if it exists) when the cell is tapped
@@ -287,11 +315,16 @@ extension SearchViewController: UITableViewDataSource {
         showDownloadControls = true
         cell.progressView.progress = download.progress
         cell.progressLabel.text = (download.isDownloading) ? "Downloading...":"Paused"
+        let title = (download.isDownloading) ? "Pause":"Resume"
+        cell.pauseButton.setTitle(title, for: .normal)
     }
     cell.progressView.isHidden = !showDownloadControls
     cell.progressLabel.isHidden = !showDownloadControls
     cell.selectionStyle = downloaded ? UITableViewCellSelectionStyle.gray : UITableViewCellSelectionStyle.none
     cell.downloadButton.isHidden = downloaded || showDownloadControls
+    
+    cell.pauseButton.isHidden = !showDownloadControls
+    cell.cancelButton.isHidden = !showDownloadControls
     
     return cell
   }
