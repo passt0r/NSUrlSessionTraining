@@ -29,7 +29,7 @@ class SearchViewController: UIViewController {
   // MARK: View controller methods
     
     lazy var downloadSession:URLSession = {
-        let configuration = URLSessionConfiguration.default
+        let configuration = URLSessionConfiguration.background(withIdentifier: "bgSessionConfiguration")
         let session = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
         return session
     }()
@@ -37,6 +37,7 @@ class SearchViewController: UIViewController {
   override func viewDidLoad() {
     super.viewDidLoad()
     tableView.tableFooterView = UIView()
+    _ = self.downloadSession
   }
   
   override func didReceiveMemoryWarning() {
@@ -392,5 +393,18 @@ extension SearchViewController: URLSessionDownloadDelegate {
         }
     }
     
+}
+
+extension SearchViewController: URLSessionDelegate  {
+    func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
+        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
+            if let completitionHandler = appDelegate.backgroundSessionCompletinHandler {
+                //appDelegate.backgroundSessionCompletinHandler = nil
+                DispatchQueue.main.async {
+                    completitionHandler()
+                }
+            }
+        }
+    }
 }
 
