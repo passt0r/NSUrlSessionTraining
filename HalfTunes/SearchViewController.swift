@@ -157,12 +157,12 @@ extension SearchViewController: UISearchBarDelegate {
         //show network activity
     }
     let expectedCharSet = CharacterSet.urlQueryAllowed
-    let searchTerm = searchBar.text!.addingPercentEncoding(withAllowedCharacters: expectedCharSet)
+    let searchTerm = searchBar.text!.addingPercentEncoding(withAllowedCharacters: expectedCharSet)!
     //replasing characters in search bar to allowed for search
     
     let url = URL(string: "https://itunes.apple.com/search?media=music&entity=song&term=\(searchTerm)")
     //searching url
-    
+    //if let url = url {
     dataTask = defaultSession.dataTask(with: url!){data , response, error in
         DispatchQueue.main.async(){
             UIApplication.shared.isNetworkActivityIndicatorVisible = false
@@ -179,7 +179,8 @@ extension SearchViewController: UISearchBarDelegate {
     }
     
     dataTask?.resume() //start download
-    
+   // } else { fatalError("Error in url") //need for debug
+    //}
   }
     
   func position(for bar: UIBarPositioning) -> UIBarPosition {
