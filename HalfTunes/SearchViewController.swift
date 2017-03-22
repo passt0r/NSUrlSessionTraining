@@ -282,8 +282,16 @@ extension SearchViewController: UITableViewDataSource {
 
     // If the track is already downloaded, enable cell selection and hide the Download button
     let downloaded = localFileExistsForTrack(track)
+    var showDownloadControls = false //For tracks with active downloads, you set showDownloadControls to true; otherwise, you set it to false.
+    if let download = activeDownloads[track.previewUrl!] {
+        showDownloadControls = true
+        cell.progressView.progress = download.progress
+        cell.progressLabel.text = (download.isDownloading) ? "Downloading...":"Paused"
+    }
+    cell.progressView.isHidden = !showDownloadControls
+    cell.progressLabel.isHidden = !showDownloadControls
     cell.selectionStyle = downloaded ? UITableViewCellSelectionStyle.gray : UITableViewCellSelectionStyle.none
-    cell.downloadButton.isHidden = downloaded
+    cell.downloadButton.isHidden = downloaded || showDownloadControls
     
     return cell
   }
@@ -330,6 +338,22 @@ extension SearchViewController: URLSessionDownloadDelegate {
             if let trackIndex =  trackIndexFor(downloadTask: downloadTask) {
                 DispatchQueue.main.async {
                     self.tableView.reloadRows(at: [IndexPath(row: trackIndex, section: 0)], with: .none)
+                }
+            }
+        }
+    }
+    
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+        if let downloadUrl = downloadTask.originalRequest?.url?.absoluteString, let download = activeDownloads[downloadUrl] {
+            
+            download.progress = Float(totalBytesWritten/totalBytesExpectedToWrite)
+            
+            let totalSize = ByteCountFormatter.string(fromByteCount: totalBytesExpectedToWrite, countStyle: .binary)
+            
+            if let trackIndex = trackIndexFor(downloadTask: downloadTask), let trackCell = tableView.cellForRow(at: IndexPath(row: trackIndex, section: 0)) as? TrackCell {
+                DispatchQueue.main.async {
+                    trackCell.progressView.progress = download.progress
+                    trackCell.progressLabel.text = String(format: "%.1f%% of %@", download.progress*100, totalSize)
                 }
             }
         }
