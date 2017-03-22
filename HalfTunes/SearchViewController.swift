@@ -148,6 +148,38 @@ extension SearchViewController: UISearchBarDelegate {
     dismissKeyboard()
     
     // TODO
+    if (!searchBar.text!.isEmpty){
+        if dataTask != nil {
+            dataTask?.cancel()
+        } //cancel previous download task
+        
+        UIApplication.shared.isNetworkActivityIndicatorVisible = true
+        //show network activity
+    }
+    let expectedCharSet = CharacterSet.urlQueryAllowed
+    let searchTerm = searchBar.text!.addingPercentEncoding(withAllowedCharacters: expectedCharSet)
+    //replasing characters in search bar to allowed for search
+    
+    let url = URL(string: "https://itunes.apple.com/search?media=music&entity=song&term=\(searchTerm)")
+    //searching url
+    
+    dataTask = defaultSession.dataTask(with: url!){data , response, error in
+        DispatchQueue.main.async(){
+            UIApplication.shared.isNetworkActivityIndicatorVisible = false
+        } //dismatch network updating
+        if let error = error {
+            print(error.localizedDescription)
+        }//print error if exist
+        else if let httpresponse = response as? HTTPURLResponse {
+            if httpresponse.statusCode == 200 { //check if response code is successfull
+                self.updateSearchResults(data)
+            }
+        }
+        
+    }
+    
+    dataTask?.resume() //start download
+    
   }
     
   func position(for bar: UIBarPositioning) -> UIBarPosition {
