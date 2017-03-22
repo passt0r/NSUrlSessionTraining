@@ -13,6 +13,8 @@ class SearchViewController: UIViewController {
     
     let defaultSession = URLSession(configuration: .default)
     var dataTask: URLSessionDataTask?
+    
+    var activeDownloads = [String:Download]() //list of active downloads
 
   @IBOutlet weak var tableView: UITableView!
   @IBOutlet weak var searchBar: UISearchBar!
@@ -25,6 +27,12 @@ class SearchViewController: UIViewController {
   }()
   
   // MARK: View controller methods
+    
+    lazy var downloadSession:URLSession = {
+        let configuration = URLSessionConfiguration.default
+        let session = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
+        return session
+    }()
   
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -83,6 +91,17 @@ class SearchViewController: UIViewController {
   // Called when the Download button for a track is tapped
   func startDownload(_ track: Track) {
     // TODO
+    if let urlString = track.previewUrl, let url = URL(string: urlString) {
+        let download = Download(url: urlString) //initialize new download
+        
+        download.downloadTask = downloadSession.downloadTask(with: url) //set new created session for downloading
+        
+        download.downloadTask!.resume() //start download
+        
+        download.isDownloading = true //indicate that downloading in progress
+        
+        activeDownloads[download.url] = download //add downloading track to list
+    }
   }
   
   // Called when the Pause button for a track is tapped
@@ -109,6 +128,16 @@ class SearchViewController: UIViewController {
     }
   }
   
+    func trackIndexFor(downloadTask: URLSessionDownloadTask) -> Int? {
+        if let url = downloadTask.originalRequest?.url?.absoluteString {
+            for (index, track) in searchResults.enumerated() {
+                if url == track.previewUrl! {
+                    return index
+                }
+            }
+        }
+        return nil
+    }
   // MARK: Download helper methods
   
   // This method generates a permanent local file path to save a track to by appending
@@ -274,5 +303,37 @@ extension SearchViewController: UITableViewDelegate {
     }
     tableView.deselectRow(at: indexPath, animated: true)
   }
+}
+
+extension SearchViewController: URLSessionDownloadDelegate {
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+        if let originalUrl = downloadTask.originalRequest?.url?.absoluteString, let destinationUrl = localFilePathForUrl(originalUrl) {
+            
+            print(destinationUrl)
+            
+            
+            let fileManager = FileManager.default
+            do {
+                try fileManager.removeItem(at: destinationUrl)
+            } catch {
+                // Non-fatal: file probably doesn't exist
+            }
+            do {
+                try fileManager.copyItem(at: location, to: destinationUrl)
+            } catch let error as Error {
+                print("Do not copy file to disc: \(error.localizedDescription)")
+            }
+        }
+        
+        if let url = downloadTask.originalRequest?.url?.absoluteString {
+            activeDownloads[url] = nil
+            if let trackIndex =  trackIndexFor(downloadTask: downloadTask) {
+                DispatchQueue.main.async {
+                    self.tableView.reloadRows(at: [IndexPath(row: trackIndex, section: 0)], with: .none)
+                }
+            }
+        }
+    }
+    
 }
 
